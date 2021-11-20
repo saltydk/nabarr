@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/alecthomas/kong"
 	"github.com/goccy/go-yaml"
@@ -10,6 +11,7 @@ import (
 	"github.com/l3uddz/nabarr/cache"
 	"github.com/l3uddz/nabarr/cmd/nabarr/pvr"
 	"github.com/l3uddz/nabarr/media"
+	"github.com/l3uddz/nabarr/peernet"
 	"github.com/l3uddz/nabarr/rss"
 	"github.com/lefelys/state"
 	"github.com/natefinch/lumberjack"
@@ -23,9 +25,10 @@ import (
 )
 
 type config struct {
-	Media media.Config       `yaml:"media"`
-	Pvrs  []nabarr.PvrConfig `yaml:"pvrs"`
-	Rss   rss.Config         `yaml:"rss"`
+	Media   media.Config       `yaml:"media"`
+	Pvrs    []nabarr.PvrConfig `yaml:"pvrs"`
+	Rss     rss.Config         `yaml:"rss"`
+	Peernet peernet.Config     `yaml:"peernet"`
 }
 
 var (
@@ -187,11 +190,66 @@ func main() {
 
 	// run mode (start rss scheduler and wait for shutdown signal)
 	if ctx.Command() == "run" {
+		// peernet
+		pn, err := peernet.New(cfg.Peernet)
+		if err != nil {
+			log.Error().
+				Err(err).
+				Msg("Failed initialising peernet")
+			return
+		}
+
+		pnHandler := func(ctx context.Context, data []byte) error {
+			// decode data
+			fi := new(media.FeedItem)
+			if err := json.Unmarshal(data, fi); err != nil {
+				log.Error().
+					Err(err).
+					Msg("Failed decoding feed item from peernet")
+				return nil
+			}
+
+			// send to pvr(s)
+			for _, p := range pvrs {
+				switch {
+				case (fi.TvdbId != "" || fi.TmdbId != "") && p.Type() == "sonarr":
+					// tvdbId/tmdbId is present, queue with sonarr
+					p.QueueFeedItem(fi)
+				case (fi.ImdbId != "" || fi.TmdbId != "") && p.Type() == "radarr":
+					// imdbId is present, queue with radarr
+					p.QueueFeedItem(fi)
+				}
+			}
+
+			return nil
+		}
+
+		if err := pn.Subscribe("sonarr", pnHandler); err != nil {
+			log.Error().
+				Err(err).
+				Msg("Failed subscribing to sonarr peernet topic")
+			return
+		}
+
+		if err := pn.Subscribe("radarr", pnHandler); err != nil {
+			log.Error().
+				Err(err).
+				Msg("Failed subscribing to radarr peernet topic")
+			return
+		}
+
+		if err := pn.Bootstrap(); err != nil {
+			log.Error().
+				Err(err).
+				Msg("Failed bootstrapping peernet")
+			return
+		}
+
 		// rss
 		log.Trace().Msg("Initialising rss")
 		r := rss.New(cfg.Rss, c, pvrs)
 		for _, feed := range cfg.Rss.Feeds {
-			if err := r.AddJob(feed); err != nil {
+			if err := r.AddJob(feed, pn); err != nil {
 				log.Error().
 					Err(err).
 					Msg("Failed initialising rss")

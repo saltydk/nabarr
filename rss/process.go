@@ -1,6 +1,7 @@
 package rss
 
 import (
+	"encoding/json"
 	"encoding/xml"
 	"fmt"
 	"github.com/l3uddz/nabarr/media"
@@ -24,7 +25,7 @@ func (j *rssJob) process() error {
 		return nil
 	}
 
-	for p, _ := range items {
+	for p := range items {
 		j.queueItemWithPvrs(&items[p])
 	}
 
@@ -35,6 +36,7 @@ func (j *rssJob) process() error {
 }
 
 func (j *rssJob) queueItemWithPvrs(item *media.FeedItem) {
+	// queue with pvr(s)
 	for _, pvr := range j.pvrs {
 		switch {
 		case (item.TvdbId != "" || item.TmdbId != "") && pvr.Type() == "sonarr":
@@ -43,6 +45,51 @@ func (j *rssJob) queueItemWithPvrs(item *media.FeedItem) {
 		case (item.ImdbId != "" || item.TmdbId != "") && pvr.Type() == "radarr":
 			// imdbId is present, queue with radarr
 			pvr.QueueFeedItem(item)
+		}
+	}
+
+	// broadcast to peernet
+	if j.pn != nil && (item.TvdbId != "" || item.ImdbId != "" || item.TmdbId != "") {
+		// create item for broadcast
+		bi := media.FeedItem{
+			Title:      item.Title,
+			Category:   item.Category,
+			GUID:       item.GUID,
+			PubDate:    item.PubDate,
+			Feed:       "peernet",
+			Language:   item.Language,
+			TvdbId:     item.TvdbId,
+			TvMazeId:   item.TvMazeId,
+			ImdbId:     item.ImdbId,
+			TmdbId:     item.TmdbId,
+			Attributes: nil,
+		}
+
+		// marshall
+		ij, err := json.Marshal(bi)
+		if err != nil {
+			j.log.Error().
+				Err(err).
+				Msg("Failed marshalling feed item for peernet broadcast")
+			return
+		}
+
+		// broadcast
+		var bErr error
+		switch {
+		case bi.TvdbId != "" || bi.TmdbId != "":
+			// broadcast to sonarr topic
+			bErr = j.pn.Broadcast("sonarr", ij)
+		case item.ImdbId != "" || item.TmdbId != "":
+			// broadcast to radarr topic
+			bErr = j.pn.Broadcast("radarr", ij)
+		}
+
+		if bErr != nil {
+			j.log.Error().
+				Err(err).
+				Str("feed_title", bi.Title).
+				Msg("Failed broadcasting to peernet")
 		}
 	}
 }

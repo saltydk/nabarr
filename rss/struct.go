@@ -3,6 +3,7 @@ package rss
 import (
 	"github.com/l3uddz/nabarr/cache"
 	"github.com/l3uddz/nabarr/cmd/nabarr/pvr"
+	"github.com/l3uddz/nabarr/peernet"
 	"github.com/robfig/cron/v3"
 	"github.com/rs/zerolog"
 	"net/http"
@@ -30,6 +31,7 @@ type rssJob struct {
 
 	url  string
 	pvrs map[string]pvr.PVR
+	pn   *peernet.Node
 
 	attempts int
 	errors   []error

@@ -3,12 +3,13 @@ package rss
 import (
 	"fmt"
 	"github.com/l3uddz/nabarr/cmd/nabarr/pvr"
+	"github.com/l3uddz/nabarr/peernet"
 	"github.com/l3uddz/nabarr/util"
 	"github.com/robfig/cron/v3"
 	"time"
 )
 
-func (c *Client) AddJob(feed feedItem) error {
+func (c *Client) AddJob(feed feedItem, pn *peernet.Node) error {
 	// prepare job
 	if feed.Cron == "" {
 		feed.Cron = "*/15 * * * *"
@@ -30,6 +31,7 @@ func (c *Client) AddJob(feed feedItem) error {
 
 		url:  feed.URL,
 		pvrs: make(map[string]pvr.PVR, 0),
+		pn:   pn,
 
 		attempts: 0,
 		errors:   make([]error, 0),

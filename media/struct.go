@@ -58,26 +58,26 @@ type Rss struct {
 }
 
 type FeedItem struct {
-	Title    string `xml:"title,omitempty"`
-	Category string `xml:"category,omitempty"`
-	GUID     string `xml:"guid,omitempty"`
-	PubDate  Time   `xml:"pubDate,omitempty"`
+	Title    string `xml:"title,omitempty" json:"title,omitempty"`
+	Category string `xml:"category,omitempty" json:"category,omitempty"`
+	GUID     string `xml:"guid,omitempty" json:"guid,omitempty"`
+	PubDate  Time   `xml:"pubDate,omitempty"  json:"pub_date,omitempty"`
 
 	// set by processor
-	Feed string
+	Feed string `json:"feed,omitempty"`
 
 	// attributes
-	Language string
-	TvdbId   string `xml:"tvdb,omitempty"`
-	TvMazeId string
-	ImdbId   string `xml:"imdb,omitempty"`
-	TmdbId   string `xml:"tmdb,omitempty"`
+	Language string `json:"language"`
+	TvdbId   string `xml:"tvdb,omitempty"  json:"tvdb,omitempty"`
+	TvMazeId string `json:"-"`
+	ImdbId   string `xml:"imdb,omitempty"  json:"imdb,omitempty"`
+	TmdbId   string `xml:"tmdb,omitempty"  json:"tmdb,omitempty"`
 
 	Attributes []struct {
 		XMLName xml.Name
 		Name    string `xml:"name,attr"`
 		Value   string `xml:"value,attr"`
-	} `xml:"attr"`
+	} `xml:"attr"  json:"-"`
 }
 
 func (f *FeedItem) GetProviderData() (string, string) {
