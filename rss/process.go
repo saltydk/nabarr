@@ -25,26 +25,39 @@ func (j *rssJob) process() error {
 		return nil
 	}
 
+	queuedItems := 0
 	for p := range items {
-		j.queueItemWithPvrs(&items[p])
+		if j.queueItemWithPvrs(&items[p]) {
+			queuedItems++
+		}
+	}
+
+	if queuedItems == 0 {
+		j.log.Debug().Msg("Refreshed, no valid items to queue")
+		return nil
 	}
 
 	j.log.Info().
-		Int("count", len(items)).
+		Int("count", queuedItems).
 		Msg("Queued items")
 	return nil
 }
 
-func (j *rssJob) queueItemWithPvrs(item *media.FeedItem) {
+func (j *rssJob) queueItemWithPvrs(item *media.FeedItem) bool {
 	// queue with pvr(s)
+	queued := false
 	for _, pvr := range j.pvrs {
 		switch {
-		case (item.TvdbId != "" || item.TmdbId != "") && pvr.Type() == "sonarr":
+		case (item.TvdbId != "" || item.TmdbId != "") && util.ContainsTvCategory(item.Category) && pvr.Type() == "sonarr":
 			// tvdbId/tmdbId is present, queue with sonarr
 			pvr.QueueFeedItem(item)
-		case (item.ImdbId != "" || item.TmdbId != "") && pvr.Type() == "radarr":
+			// mark item as queued
+			queued = true
+		case (item.ImdbId != "" || item.TmdbId != "") && util.ContainsMovieCategory(item.Category) && pvr.Type() == "radarr":
 			// imdbId is present, queue with radarr
 			pvr.QueueFeedItem(item)
+			// mark item as queued
+			queued = true
 		}
 	}
 
@@ -71,16 +84,16 @@ func (j *rssJob) queueItemWithPvrs(item *media.FeedItem) {
 			j.log.Error().
 				Err(err).
 				Msg("Failed marshalling feed item for peernet broadcast")
-			return
+			return queued
 		}
 
 		// broadcast
 		var bErr error
 		switch {
-		case bi.TvdbId != "" || bi.TmdbId != "":
+		case (bi.TvdbId != "" || bi.TmdbId != "") && util.ContainsTvCategory(item.Category):
 			// broadcast to sonarr topic
 			bErr = j.pn.Broadcast("sonarr", ij)
-		case item.ImdbId != "" || item.TmdbId != "":
+		case (item.ImdbId != "" || item.TmdbId != "") && util.ContainsMovieCategory(item.Category):
 			// broadcast to radarr topic
 			bErr = j.pn.Broadcast("radarr", ij)
 		}
@@ -90,8 +103,11 @@ func (j *rssJob) queueItemWithPvrs(item *media.FeedItem) {
 				Err(err).
 				Str("feed_title", bi.Title).
 				Msg("Failed broadcasting to peernet")
+			return queued
 		}
 	}
+
+	return queued
 }
 
 func (j *rssJob) getFeed() ([]media.FeedItem, error) {
@@ -144,6 +160,8 @@ func (j *rssJob) getFeed() ([]media.FeedItem, error) {
 		// process feed item attributes
 		for _, a := range i.Attributes {
 			switch strings.ToLower(a.Name) {
+			case "category":
+				b.Channel.Items[p].Category = append(b.Channel.Items[p].Category, a.Value)
 			case "language":
 				b.Channel.Items[p].Language = a.Value
 			case "tvdb", "tvdbid", "thetvdb":

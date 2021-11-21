@@ -58,10 +58,10 @@ type Rss struct {
 }
 
 type FeedItem struct {
-	Title    string `xml:"title,omitempty" json:"title,omitempty"`
-	Category string `xml:"category,omitempty" json:"category,omitempty"`
-	GUID     string `xml:"guid,omitempty" json:"guid,omitempty"`
-	PubDate  Time   `xml:"pubDate,omitempty"  json:"pub_date,omitempty"`
+	Title    string   `xml:"title,omitempty" json:"title,omitempty"`
+	Category []string `xml:"category,omitempty" json:"category,omitempty"`
+	GUID     string   `xml:"guid,omitempty" json:"guid,omitempty"`
+	PubDate  Time     `xml:"pubDate,omitempty"  json:"pub_date,omitempty"`
 
 	// set by processor
 	Feed string `json:"feed,omitempty"`

@@ -13,6 +13,7 @@ import (
 	"github.com/l3uddz/nabarr/media"
 	"github.com/l3uddz/nabarr/peernet"
 	"github.com/l3uddz/nabarr/rss"
+	"github.com/l3uddz/nabarr/util"
 	"github.com/lefelys/state"
 	"github.com/natefinch/lumberjack"
 	"github.com/rs/zerolog"
@@ -200,27 +201,33 @@ func main() {
 		}
 
 		pnHandler := func(ctx context.Context, data []byte) error {
-			// decode data
-			fi := new(media.FeedItem)
-			if err := json.Unmarshal(data, fi); err != nil {
-				log.Error().
-					Err(err).
-					Msg("Failed decoding feed item from peernet")
-				return nil
-			}
-
-			// send to pvr(s)
-			for _, p := range pvrs {
-				switch {
-				case (fi.TvdbId != "" || fi.TmdbId != "") && p.Type() == "sonarr":
-					// tvdbId/tmdbId is present, queue with sonarr
-					p.QueueFeedItem(fi)
-				case (fi.ImdbId != "" || fi.TmdbId != "") && p.Type() == "radarr":
-					// imdbId is present, queue with radarr
-					p.QueueFeedItem(fi)
+			// spawn routine to process message
+			// we need to-do this to ensure we receive as fast as possible....
+			// see: https://github.com/libp2p/go-libp2p-pubsub/issues/197
+			go func(ctx context.Context, data []byte) {
+				// decode data
+				fi := new(media.FeedItem)
+				if err := json.Unmarshal(data, fi); err != nil {
+					log.Error().
+						Err(err).
+						Msg("Failed decoding feed item from peernet")
+					return
 				}
-			}
 
+				// send to pvr(s)
+				for _, p := range pvrs {
+					switch {
+					case (fi.TvdbId != "" || fi.TmdbId != "") && util.ContainsTvCategory(fi.Category) && p.Type() == "sonarr":
+						// tvdbId/tmdbId is present, queue with sonarr
+						p.QueueFeedItem(fi)
+					case (fi.ImdbId != "" || fi.TmdbId != "") && util.ContainsMovieCategory(fi.Category) && p.Type() == "radarr":
+						// imdbId is present, queue with radarr
+						p.QueueFeedItem(fi)
+					}
+				}
+
+				return
+			}(ctx, data)
 			return nil
 		}
 
