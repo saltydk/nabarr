@@ -15,11 +15,6 @@ type exclusion struct {
 	Id     int    `json:"id"`
 }
 
-type languageProfile struct {
-	Name string
-	Id   int
-}
-
 type lookupRequest struct {
 	Id         int    `json:"id,omitempty"`
 	Title      string `json:"title"`
@@ -30,20 +25,19 @@ type lookupRequest struct {
 }
 
 type addRequest struct {
-	Title             string     `json:"title"`
-	TitleSlug         string     `json:"titleSlug"`
-	Year              int        `json:"year"`
-	QualityProfileId  int        `json:"qualityProfileId"`
-	LanguageProfileId int        `json:"languageProfileId,omitempty"`
-	Images            []string   `json:"images"`
-	Tags              []string   `json:"tags"`
-	Monitored         bool       `json:"monitored"`
-	RootFolderPath    string     `json:"rootFolderPath"`
-	AddOptions        addOptions `json:"addOptions"`
-	Seasons           []string   `json:"seasons"`
-	SeriesType        string     `json:"seriesType"`
-	SeasonFolder      bool       `json:"seasonFolder"`
-	TvdbId            int        `json:"tvdbId"`
+	Title            string     `json:"title"`
+	TitleSlug        string     `json:"titleSlug"`
+	Year             int        `json:"year"`
+	QualityProfileId int        `json:"qualityProfileId"`
+	Images           []string   `json:"images"`
+	Tags             []string   `json:"tags"`
+	Monitored        bool       `json:"monitored"`
+	RootFolderPath   string     `json:"rootFolderPath"`
+	AddOptions       addOptions `json:"addOptions"`
+	Seasons          []string   `json:"seasons"`
+	SeriesType       string     `json:"seriesType"`
+	SeasonFolder     bool       `json:"seasonFolder"`
+	TvdbId           int        `json:"tvdbId"`
 }
 
 type addOptions struct {

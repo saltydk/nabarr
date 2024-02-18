@@ -174,7 +174,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           tags: |
-            cloudb0x/nabarr:${{ steps.dockertag.outputs.replaced }}
+            saltydk/nabarr:${{ steps.dockertag.outputs.replaced }}
 
       # cleanup
       - name: cleanup

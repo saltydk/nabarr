@@ -21,9 +21,8 @@ type Client struct {
 	testMode    bool
 	testModeAdd bool
 
-	rootFolder        string
-	qualityProfileId  int
-	languageProfileId int
+	rootFolder       string
+	qualityProfileId int
 
 	// options
 	searchMissing bool
@@ -112,15 +111,6 @@ func New(c nabarr.PvrConfig, mode string, m *media.Client, cc *cache.Client) (*C
 		return nil, fmt.Errorf("get quality profile: %v: %w", c.QualityProfile, err)
 	} else {
 		cl.qualityProfileId = qid
-	}
-
-	// get language profile
-	if !strings.HasPrefix(ss.Version, "4.") {
-		if lid, err := cl.getLanguageProfileId(c.LanguageProfile); err != nil {
-			return nil, fmt.Errorf("get language profile: %v: %w", c.LanguageProfile, err)
-		} else {
-			cl.languageProfileId = lid
-		}
 	}
 
 	cl.log.Info().
